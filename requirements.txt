@@ -1,4 +1,11 @@
 scikit-learn
 opencv-python
+
 torch
+torchvision
+
 matplotlib
+
+facenet-pytorch
+pillow
+numpy
