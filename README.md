@@ -122,7 +122,7 @@ python main.py
 - **옵티마이저**: Adam
 - **클래스**: jisung, unknown
 
-## 🔍 기술 스택
+## 기술 스택
 
 - **딥러닝**: PyTorch, torchvision
 - **컴퓨터 비전**: OpenCV, PIL
