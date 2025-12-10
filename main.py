@@ -14,23 +14,24 @@ import time
 # 1. 사용할 영상 소스
 # - 웹캠 사용 시: 0  (숫자 0)
 # - 파일 사용 시: 'test_video.mp4' (문자열)
-VIDEO_SOURCE = 0 
+VIDEO_SOURCE = 0
 
-# 2. 클래스 이름 (⚠️ train.py 돌릴 때 폴더 순서(알파벳순)와 똑같아야 함!)
+# 2. 클래스 이름 ( train.py 돌릴 때 폴더 순서(알파벳순)와 똑같아야 함!)
 # 예: dataset 폴더에 jisung, minji, unknown이 있다면 -> ['jisung', 'minji', 'unknown']
-CLASS_NAMES = ['jisung', 'unknown']
+CLASS_NAMES = ["jisung", "unknown"]
 
 # 3. 문 열어줄 사람 명단
-AUTHORIZED_USERS = ['jisung']
+AUTHORIZED_USERS = ["jisung"]
 
 # 4. 확신 기준 (이 점수보다 낮으면 모르는 사람 취급)
 # 0.7 (70%) ~ 0.8 (80%) 추천
 CONFIDENCE_THRESHOLD = 0.8
 
 # 5. 모델 파일 경로
-MODEL_PATH = './model/20251209_052410/face_model.pth' 
+MODEL_PATH = "./model/20251209_052410/face_model.pth"
 
 # ===============================================================
+
 
 def run_inference():
     print("------------------------------------------------")
@@ -43,26 +44,28 @@ def run_inference():
     print(f"1. 시스템 장치: {device}")
 
     # 2. 데이터 전처리 (⚠️ 중요: 학습 때 썼던 증강(회전, 반전)은 다 빼고 정석만 남김)
-    preprocess = transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ])
+    preprocess = transforms.Compose(
+        [
+            transforms.Resize((224, 224)),
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+        ]
+    )
 
     # 3. 모델 로드
     print("2. AI 모델(ResNet18) 로딩 중...")
     try:
         # 껍데기 만들기
-        model = models.resnet18(weights=None) 
+        model = models.resnet18(weights=None)
         num_ftrs = model.fc.in_features
         model.fc = nn.Linear(num_ftrs, len(CLASS_NAMES))
-        
+
         # 가중치 불러오기 (CPU/GPU 호환성 처리)
         model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
         model = model.to(device)
-        
+
         # [핵심] 평가 모드로 전환 (Dropout, BatchNorm 고정)
-        model.eval() 
+        model.eval()
         print("   -> 모델 로딩 성공!")
     except Exception as e:
         print(f"모델 로딩 실패! 경로와 클래스 개수를 확인하세요.\n{e}")
@@ -79,12 +82,13 @@ def run_inference():
         return
 
     print("🟢 [Start] 화면에 얼굴을 비춰주세요. (종료: 'q' 키)")
-    
+
     prev_time = 0
 
     while cap.isOpened():
         ret, frame = cap.read()
-        if not ret: break
+        if not ret:
+            break
 
         # FPS 계산
         curr_time = time.time()
@@ -111,16 +115,16 @@ def run_inference():
 
                 # 2. 얼굴 자르기 (Crop)
                 face_img = pil_img.crop((x1, y1, x2, y2))
-                
+
                 try:
                     # 3. 전처리 및 AI 예측
                     input_tensor = preprocess(face_img).unsqueeze(0).to(device)
-                    
-                    with torch.no_grad(): # 계산 기록 끄기 (속도 향상)
+
+                    with torch.no_grad():  # 계산 기록 끄기 (속도 향상)
                         outputs = model(input_tensor)
-                        probs = F.softmax(outputs, dim=1) # 확률로 변환 (0~1)
+                        probs = F.softmax(outputs, dim=1)  # 확률로 변환 (0~1)
                         max_prob, idx = torch.max(probs, 1)
-                        
+
                         prob_val = max_prob.item()
                         pred_name = CLASS_NAMES[idx.item()]
 
@@ -128,17 +132,19 @@ def run_inference():
                     if prob_val < CONFIDENCE_THRESHOLD:
                         # 확률이 낮으면 모르는 사람으로 간주
                         final_name = "Unknown"
-                        color = (0, 0, 255) # 빨강 (Red)
+                        color = (0, 0, 255)  # 빨강 (Red)
                         status_text = f"UNKNOWN ({prob_val*100:.1f}%)"
                     else:
                         # 확률이 높을 때
                         if pred_name in AUTHORIZED_USERS:
                             final_name = pred_name
-                            color = (0, 255, 0) # 초록 (Green)
-                            status_text = f"OPEN: {pred_name.upper()} ({prob_val*100:.1f}%)"
-                        elif pred_name == 'unknown':
+                            color = (0, 255, 0)  # 초록 (Green)
+                            status_text = (
+                                f"OPEN: {pred_name.upper()} ({prob_val*100:.1f}%)"
+                            )
+                        elif pred_name == "unknown":
                             final_name = "Unknown"
-                            color = (0, 0, 255) # 빨강
+                            color = (0, 0, 255)  # 빨강
                             status_text = f"UNKNOWN ({prob_val*100:.1f}%)"
                         else:
                             final_name = pred_name
@@ -148,26 +154,48 @@ def run_inference():
                     # 5. 화면에 그리기
                     cv2.rectangle(frame, (x1, y1), (x2, y2), color, 3)
                     # 글자 배경 검은색 박스 (가독성 UP)
-                    cv2.rectangle(frame, (x1, y1-35), (x1+len(status_text)*18, y1), color, -1)
-                    cv2.putText(frame, status_text, (x1+5, y1-10), 
-                               cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+                    cv2.rectangle(
+                        frame,
+                        (x1, y1 - 35),
+                        (x1 + len(status_text) * 18, y1),
+                        color,
+                        -1,
+                    )
+                    cv2.putText(
+                        frame,
+                        status_text,
+                        (x1 + 5, y1 - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.8,
+                        (255, 255, 255),
+                        2,
+                    )
 
                 except Exception as e:
-                    pass # 얼굴 처리 중 에러 나면 무시하고 다음 프레임
+                    pass  # 얼굴 처리 중 에러 나면 무시하고 다음 프레임
 
         # FPS 표시
-        cv2.putText(frame, f"FPS: {fps:.1f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+        cv2.putText(
+            frame,
+            f"FPS: {fps:.1f}",
+            (10, 30),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            (0, 255, 255),
+            2,
+        )
 
         # 화면 출력
-        cv2.imshow('AI Face Security System', frame)
+        cv2.imshow("AI Face Security System", frame)
 
         # 'q' 누르면 종료
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        if cv2.waitKey(1) & 0xFF == ord("q"):
             break
 
     cap.release()
     cv2.destroyAllWindows()
     print("🔴 프로그램 종료")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     run_inference()
