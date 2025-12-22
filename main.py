@@ -41,7 +41,7 @@ MAX_MOVE_DISTANCE = 100
 def run_dashboard():
     # 1. 장치 설정
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"🚀 시스템 시작... (Device: {device})")
+    print(f"시스템 시작... (Device: {device})")
     
     # 2. 전처리 정의 (ResNet 입력 규격)
     preprocess = transforms.Compose([
@@ -51,16 +51,16 @@ def run_dashboard():
     ])
 
     # 3. 모델 로드
-    print("🛠️ 모델 로딩 중...")
+    print("모델 로딩 중...")
     try:
         model = models.resnet18(weights=None)
         model.fc = nn.Linear(model.fc.in_features, len(CLASS_NAMES))
         model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
         model.to(device)
         model.eval()
-        print("✅ 모델 로드 완료!")
+        print("모델 로드 완료!")
     except Exception as e:
-        print(f"🚨 모델 로드 실패: {e}")
+        print(f"모델 로드 실패: {e}")
         print(f"경로를 확인하세요: {MODEL_PATH}")
         return
 
@@ -84,7 +84,7 @@ def run_dashboard():
     current_locked_user = None # 현재 락온된 사용자
     prev_center = None # 이전 프레임 얼굴 중심점 (이동 감지용)
 
-    print("🎥 대시보드 실행 (종료하려면 'q'를 누르세요)")
+    print("대시보드 실행 (종료하려면 'q'를 누르세요)")
 
     while cap.isOpened():
         ret, frame = cap.read()
@@ -247,13 +247,13 @@ def run_dashboard():
                     cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 255), 2)
 
         # 4. 신뢰도 게이지 (Bar Chart)
-        cv2.putText(dashboard, f"CONFIDENCE: {final_prob*100:.1f}%", (ui_x_start + 20, 240), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (150, 150, 150), 1)
-        # 게이지 배경
-        cv2.rectangle(dashboard, (ui_x_start + 20, 250), (layout_width - 20, 270), (50, 50, 50), -1)
-        # 게이지 값
-        bar_width = int((layout_width - 20 - (ui_x_start + 20)) * final_prob)
-        cv2.rectangle(dashboard, (ui_x_start + 20, 250), (ui_x_start + 20 + bar_width, 270), status_color, -1)
+        # cv2.putText(dashboard, f"CONFIDENCE: {final_prob*100:.1f}%", (ui_x_start + 20, 240), 
+        #             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (150, 150, 150), 1)
+        # # 게이지 배경
+        # cv2.rectangle(dashboard, (ui_x_start + 20, 250), (layout_width - 20, 270), (50, 50, 50), -1)
+        # # 게이지 값
+        # bar_width = int((layout_width - 20 - (ui_x_start + 20)) * final_prob)
+        # cv2.rectangle(dashboard, (ui_x_start + 20, 250), (ui_x_start + 20 + bar_width, 270), status_color, -1)
 
         # 5. 접속 로그 (색상 자동 적용)
         cv2.putText(dashboard, "ACCESS LOG:", (ui_x_start + 20, 310), 
